@@ -1,0 +1,192 @@
+---
+title: "Projet_intensif"
+author: "Jeanne MEDENOU"
+date: '2025-03-15'
+output: html_document
+---
+
+```{r}
+#Prétraitement
+library(tidyverse)
+
+
+#meteo <- read_csv("C:/Users/jeann/Downloads/Projet_données/8090.csv")
+#location<-location[,-1]
+#infos<-infos[,-1]
+#meteo<-meteo[,-c(1,2)]
+
+
+meteo<-na.omit(meteo)
+infos<-na.omit(infos)
+location<-na.omit(location)
+
+colnames(location_heure_1)<-c("Date","Hour","n")
+
+
+
+
+
+```
+
+
+
+
+```{r}
+#nombre de location  par jour
+location_jour<-location %>% 
+  count(date) %>% 
+  group_by(date)
+
+
+#nombre de location par heure par date
+
+location_heure<-location %>% 
+  mutate(hour=hour(heure)) %>% 
+  group_by(date) %>% 
+  count(hour)
+
+
+
+
+'''
+ meteo_scaled<-meteo %>% 
+   mutate(temp=scale(Temperature),humid=scale(Humidity),vent=scale(Wind_speed),vision=scale(Visibility),rosee=scale(Dew_point_temperature),rayos=scale(Solar_Radiation),pluie=scale(Rainfall),neige=scale(Snowfall))'''
+
+ 
+meteo_scaled<-meteo_scaled %>% 
+  select(Date,Hour,temp,humid,vent,vision,rosee,rayos,pluie,neige)
+
+
+ meteo_scaled_2<-scale(meteo[,c(3:10)])
+```
+```{r}
+meteo_1$location<-location_heure_1$n
+
+meteo_1<-meteo
+
+location_heure_1<-location_heure[1:4512,]
+
+verif<-merge(meteo_1,location_heure_1,by=c("Date","Hour"))
+
+verif<-verif[,-11]
+
+```
+
+
+
+```{r}
+
+#ACP
+
+#Standartisation
+verif_scaled<-verif[,-c(1,2,11)]
+verif_scaled_1<-scale(verif_scaled)
+verif_scaled_1<-na.omit(verif_scaled_1)
+
+#install.packages("corrr")
+#install.packages(("ggcorrplot"))
+library(corrr)
+library(ggcorrplot)
+#library(Factoshiny)
+library(FactoMineR)
+library(factoextra)
+
+#acp
+acp<-princomp(verif_scaled_1)
+#visualisation des composantes des axes 
+summary(acp)
+
+
+#visualisation des axes principales
+acp$loadings[,1:2]
+
+#cut plot
+
+fviz_eig(acp,addlabels = TRUE)
+
+
+fviz_pca_var(acp,col.var = "black")
+
+#qualité de la représentation
+fviz_cos2(acp,choice="var",axes=1:2)
+
+
+#ACP et qualité de la représentation
+
+fviz_pca_var(acp,col.var = "cos2",gradient.cols=c("black","orange","green"),repel = TRUE)
+```
+
+
+
+
+
+```{r}
+#moyennes des variables météorologiques par jour
+
+moyennes<-meteo %>% 
+  select(Date,Temperature,Humidity,Wind_speed,Visibility,Dew_point_temperature,Solar_Radiation,Rainfall,Snowfall) %>% 
+  group_by(Date) %>% 
+  summarise(Temperature=mean(Temperature),Humidity=mean(Humidity),Wind_speed=mean(Wind_speed),visibility=mean(Visibility),rosee=mean(Dew_point_temperature),solar=mean(Solar_Radiation),Rainfall=mean(Rainfall),snowfall=mean(Snowfall))
+
+#moyennes des variables météorologiques sans NA
+
+moyennes_1<-na.omit(moyennes)
+
+
+
+
+
+
+
+```
+
+
+
+
+```{r}
+#Regression 
+
+res_lm<-lm(n~Temperature,data=verif)
+
+res_lm$coefficients
+
+
+plot(verif$Temperature,verif$n)
+lines(verif$Temperature,res_lm$fitted.values)
+```
+
+
+```{r}
+#visualisation
+
+location_jour %>% 
+  ggplot(., aes(x=date,y=n))+
+  geom_bar(stat = "identity",colour="brown")
+```
+```{r}
+location_heure %>% 
+  ggplot(., aes(x=hour,y=n))+
+  geom_bar(stat = "identity",colour="brown")
+  
+```
+
+```{r}
+#Exportation de données
+
+library("openxlsx")
+
+write.csv(verif,"C:/Users/jeann/Downloads/Base_projet.csv")
+
+write.csv(saisons,"C:/Users/jeann/Downloads/saisons.csv")
+
+
+```
+
+
+
+```{r}
+infos_1<-infos[1:171,]
+
+saisons<-merge(infos_1,location_jour,by="date")
+```
+
